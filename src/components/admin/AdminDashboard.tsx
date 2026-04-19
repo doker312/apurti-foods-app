@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Order, UserProfile, Product } from '@/lib/types'
 import { formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -40,16 +40,42 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: '#EF4444',
 }
 
-export default function AdminDashboard({ adminProfile, orders, users, products, deliveryPartners, stats }: Props) {
+export default function AdminDashboard({ adminProfile, orders: initialOrders, users, products: initialProducts, deliveryPartners, stats }: Props) {
   const [tab, setTab] = useState<AdminTab>('dashboard')
+  const [liveOrders, setLiveOrders] = useState(initialOrders)
+  const [liveProducts, setLiveProducts] = useState(initialProducts)
   const [orderFilter, setOrderFilter] = useState<string>('all')
   const [assigningOrder, setAssigningOrder] = useState<string | null>(null)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [editProduct, setEditProduct] = useState<Partial<Product> | null>(null)
   const [productLoading, setProductLoading] = useState(false)
+  const [newOrderCount, setNewOrderCount] = useState(0)
   const supabase = createClient()
   const router = useRouter()
+
+  // Realtime: auto-receive new orders
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-orders-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
+        const { data } = await supabase
+          .from('orders')
+          .select('*, users(id, name, email, role), order_items(id, quantity, price, products(id, name, category))')
+          .eq('id', payload.new.id)
+          .single()
+        if (data) {
+          setLiveOrders((prev) => [data, ...prev])
+          setNewOrderCount((n) => n + 1)
+          setTimeout(() => setNewOrderCount((n) => Math.max(0, n - 1)), 5000)
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
+        setLiveOrders((prev) => prev.map((o) => o.id === payload.new.id ? { ...o, ...payload.new } : o))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -58,37 +84,45 @@ export default function AdminDashboard({ adminProfile, orders, users, products, 
 
   const assignDelivery = async (orderId: string, deliveryId: string) => {
     setAssigningOrder(orderId)
-    await supabase.from('orders').update({ assigned_delivery_id: deliveryId, status: 'accepted' }).eq('id', orderId)
+    const { error } = await supabase.from('orders').update({ assigned_delivery_id: deliveryId, status: 'accepted' }).eq('id', orderId)
+    if (!error) {
+      setLiveOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, assigned_delivery_id: deliveryId, status: 'accepted' as const } : o))
+    }
     setAssigningOrder(null)
-    router.refresh()
   }
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     setUpdatingStatus(orderId)
-    await supabase.from('orders').update({ status }).eq('id', orderId)
+    const { error } = await supabase.from('orders').update({ status }).eq('id', orderId)
+    if (!error) {
+      setLiveOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: status as any } : o))
+    }
     setUpdatingStatus(null)
-    router.refresh()
   }
 
   const saveProduct = async () => {
     if (!editProduct) return
     setProductLoading(true)
     if (editProduct.id) {
-      await supabase.from('products').update(editProduct).eq('id', editProduct.id)
+      const { data } = await supabase.from('products').update(editProduct).eq('id', editProduct.id).select().single()
+      if (data) setLiveProducts((prev) => prev.map((p) => p.id === data.id ? data : p))
     } else {
-      await supabase.from('products').insert({ ...editProduct })
+      const { data } = await supabase.from('products').insert({ ...editProduct }).select().single()
+      if (data) setLiveProducts((prev) => [...prev, data])
     }
     setEditProduct(null)
     setProductLoading(false)
-    router.refresh()
   }
 
   const deleteProduct = async (id: string) => {
     await supabase.from('products').delete().eq('id', id)
-    router.refresh()
+    setLiveProducts((prev) => prev.filter((p) => p.id !== id))
   }
 
-  // Chart data
+  // Chart data (all using liveOrders)
+  const orders = liveOrders
+  const products = liveProducts
+
   const statusCounts = ['pending', 'accepted', 'picked', 'out_for_delivery', 'delivered', 'cancelled'].map((s) => ({
     name: getStatusLabel(s),
     value: orders.filter((o) => o.status === s).length,
@@ -109,12 +143,19 @@ export default function AdminDashboard({ adminProfile, orders, users, products, 
 
   const filteredOrders = orders.filter((o) => {
     const matchesFilter = orderFilter === 'all' || o.status === orderFilter
-    const matchesSearch = !search || o.id.includes(search) || o.users?.name?.toLowerCase().includes(search.toLowerCase())
+    const matchesSearch = !search || o.id.includes(search) || (o.users as any)?.name?.toLowerCase().includes(search.toLowerCase())
     return matchesFilter && matchesSearch
   })
 
+  const liveStats = {
+    totalOrders: orders.length,
+    revenue: orders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.total_amount, 0),
+    activeUsers: stats.activeUsers,
+    activeDeliveries: orders.filter(o => ['accepted','picked','out_for_delivery'].includes(o.status)).length,
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#FEF9F4] flex">
       {/* Sidebar */}
       <aside className="w-64 bg-gray-950 text-white flex flex-col fixed h-full z-20 hidden lg:flex">
         {/* Logo */}
@@ -171,11 +212,18 @@ export default function AdminDashboard({ adminProfile, orders, users, products, 
           <div className="px-6 py-4 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-black text-gray-900 capitalize">{tab}</h1>
-              <p className="text-xs text-gray-500">Apurti Foods Command Center</p>
+              <p className="text-xs text-gray-500">🟢 Realtime · Apurti Foods Command Center</p>
             </div>
-            {adminProfile.is_demo_user && (
-              <span className="badge bg-amber-100 text-amber-700 text-xs">🎭 Demo Mode</span>
-            )}
+            <div className="flex items-center gap-2">
+              {newOrderCount > 0 && (
+                <span className="bg-[#BA181B] text-white text-xs font-black px-2 py-1 rounded-full animate-pulse">
+                  +{newOrderCount} new
+                </span>
+              )}
+              {adminProfile.is_demo_user && (
+                <span className="badge bg-amber-100 text-amber-700 text-xs">🎭 Demo</span>
+              )}
+            </div>
           </div>
           {/* Mobile nav */}
           <div className="lg:hidden flex overflow-x-auto gap-1 px-4 pb-3">
@@ -204,10 +252,10 @@ export default function AdminDashboard({ adminProfile, orders, users, products, 
               {/* Stats Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Total Orders', value: stats.totalOrders, sub: 'All time', icon: <ShoppingBag className="w-5 h-5" />, color: 'bg-brand-50 text-brand-700' },
-                  { label: 'Revenue', value: formatCurrency(stats.revenue), sub: 'From delivered orders', icon: <TrendingUp className="w-5 h-5" />, color: 'bg-green-50 text-green-700' },
-                  { label: 'Active Users', value: stats.activeUsers, sub: 'Registered accounts', icon: <Users className="w-5 h-5" />, color: 'bg-blue-50 text-blue-700' },
-                  { label: 'Active Deliveries', value: stats.activeDeliveries, sub: 'In progress now', icon: <Truck className="w-5 h-5" />, color: 'bg-purple-50 text-purple-700' },
+                  { label: 'Total Orders', value: liveStats.totalOrders, sub: 'Live count', icon: <ShoppingBag className="w-5 h-5" />, color: 'bg-brand-50 text-brand-700' },
+                  { label: 'Revenue', value: formatCurrency(liveStats.revenue), sub: 'From delivered orders', icon: <TrendingUp className="w-5 h-5" />, color: 'bg-green-50 text-green-700' },
+                  { label: 'Active Users', value: liveStats.activeUsers, sub: 'Registered accounts', icon: <Users className="w-5 h-5" />, color: 'bg-blue-50 text-blue-700' },
+                  { label: 'Active Deliveries', value: liveStats.activeDeliveries, sub: 'In progress now', icon: <Truck className="w-5 h-5" />, color: 'bg-purple-50 text-purple-700' },
                 ].map((s) => (
                   <div key={s.label} className="card p-5">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${s.color}`}>{s.icon}</div>
@@ -279,7 +327,7 @@ export default function AdminDashboard({ adminProfile, orders, users, products, 
                       {orders.slice(0, 8).map((o) => (
                         <tr key={o.id} className="hover:bg-gray-50 transition-colors">
                           <td className="py-3 pr-4 font-mono text-xs text-gray-500">#{o.id.slice(0, 8)}</td>
-                          <td className="py-3 pr-4 font-semibold text-gray-900">{o.users?.name || `${o.user_role} user`}</td>
+                          <td className="py-3 pr-4 font-semibold text-gray-900">{(o.users as any)?.name || `${o.user_role} user`}</td>
                           <td className="py-3 pr-4 font-black text-brand-700">{formatCurrency(o.total_amount)}</td>
                           <td className="py-3 pr-4">
                             <span className={`badge text-xs ${getStatusColor(o.status)}`}>{getStatusLabel(o.status)}</span>
@@ -338,7 +386,7 @@ export default function AdminDashboard({ adminProfile, orders, users, products, 
                             <p className="text-[10px] text-gray-400">{formatDate(o.created_at)}</p>
                           </td>
                           <td className="px-4 py-3">
-                            <p className="font-semibold text-gray-900">{o.users?.name || `${o.user_role}`}</p>
+                            <p className="font-semibold text-gray-900">{(o.users as any)?.name || `${o.user_role} user`}</p>
                             <span className={`text-[10px] font-bold uppercase ${o.user_role === 'distributor' ? 'text-blue-600' : 'text-gray-400'}`}>{o.user_role}</span>
                           </td>
                           <td className="px-4 py-3 text-gray-600 text-xs">{o.order_items?.length || 0} items</td>
