@@ -5,26 +5,43 @@ import { Product, UserProfile } from '@/lib/types'
 import CustomerNav from './CustomerNav'
 import ProductCard from './ProductCard'
 import StickyCart from './StickyCart'
-import { Zap, Shield, Leaf, ChevronRight, Star, Clock } from 'lucide-react'
+import BottomNav from './BottomNav'
+import { Zap, Shield, Leaf, Clock, ChevronRight, Star } from 'lucide-react'
+import Link from 'next/link'
 
-const CATEGORIES = ['All', 'Snacks', 'Flour', 'Ready-to-eat', 'Grains', 'Beverages']
+const CATEGORIES = [
+  { id: 'All', label: '🌾 All', color: '' },
+  { id: 'Snacks', label: '🍿 Snacks', color: '' },
+  { id: 'Flour', label: '🌾 Flour', color: '' },
+  { id: 'Ready-to-eat', label: '🍱 Ready-to-eat', color: '' },
+  { id: 'Grains', label: '🌱 Grains', color: '' },
+  { id: 'Beverages', label: '🥛 Beverages', color: '' },
+]
 
 const HERO_BANNERS = [
   {
-    bg: 'from-brand-700 to-brand-900',
-    tag: '⚡ 10-Min Delivery',
+    bg: 'from-[#BA181B] to-[#7b0d0f]',
+    pill: '⚡ 10-Min Delivery',
     title: 'Farm-Fresh Millets',
-    sub: 'Straight from organic farms to your doorstep',
+    sub: 'Straight from certified organic farms',
     cta: 'Shop Now',
-    pill: 'New Arrivals',
+    emoji: '🌾',
   },
   {
-    bg: 'from-green-700 to-green-900',
-    tag: '🌾 100% Organic',
-    title: 'Sorghum & Ragi Deals',
-    sub: 'Up to 30% off on select bulk orders',
+    bg: 'from-[#2D6A4F] to-[#1a3d2e]',
+    pill: '🌿 100% Organic',
+    title: 'Ragi & Jowar Deals',
+    sub: 'Up to 30% off — limited time only',
     cta: 'Grab Deals',
-    pill: 'Limited Time',
+    emoji: '🥗',
+  },
+  {
+    bg: 'from-[#8B4513] to-[#5c2d0a]',
+    pill: '💰 Best Value',
+    title: 'Bulk Millet Packs',
+    sub: 'Save more when you buy more',
+    cta: 'Buy Bulk',
+    emoji: '📦',
   },
 ]
 
@@ -45,31 +62,27 @@ export default function CustomerHomePage({ profile, products }: Props) {
   const banner = HERO_BANNERS[heroBanner]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FEF9F4]">
       <CustomerNav isDemoUser={profile?.is_demo_user} />
 
       {/* Hero Banner */}
       <div className={`bg-gradient-to-br ${banner.bg} text-white mx-3 mt-3 rounded-2xl p-5 relative overflow-hidden`}>
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white" />
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white" />
-        </div>
+        <div className="absolute top-0 right-0 text-8xl opacity-10 select-none leading-none">{banner.emoji}</div>
+        <div className="absolute -right-4 -bottom-4 w-28 h-28 rounded-full bg-white/10" />
         <div className="relative">
-          <span className="badge bg-white/20 text-white text-[10px] mb-2">{banner.pill}</span>
-          <p className="text-sm font-semibold opacity-90 mb-1">{banner.tag}</p>
+          <span className="inline-block bg-white/20 text-white text-[10px] font-bold px-3 py-1 rounded-full mb-3">{banner.pill}</span>
           <h2 className="text-2xl font-black leading-tight mb-1">{banner.title}</h2>
           <p className="text-sm opacity-80 mb-4">{banner.sub}</p>
-          <button className="bg-white text-brand-700 font-black text-sm px-5 py-2.5 rounded-xl hover:bg-gray-100 transition active:scale-95 shadow-md">
+          <button className="bg-white text-[#BA181B] font-black text-sm px-5 py-2.5 rounded-xl hover:bg-gray-100 transition-all active:scale-95 shadow-md">
             {banner.cta} →
           </button>
         </div>
-        {/* Banner dots */}
-        <div className="absolute bottom-3 right-3 flex gap-1.5">
+        <div className="absolute bottom-3 right-4 flex gap-1.5">
           {HERO_BANNERS.map((_, i) => (
             <button
               key={i}
               onClick={() => setHeroBanner(i)}
-              className={`w-2 h-2 rounded-full transition-colors ${i === heroBanner ? 'bg-white' : 'bg-white/40'}`}
+              className={`h-1.5 rounded-full transition-all duration-300 ${i === heroBanner ? 'w-5 bg-white' : 'w-1.5 bg-white/40'}`}
             />
           ))}
         </div>
@@ -78,55 +91,69 @@ export default function CustomerHomePage({ profile, products }: Props) {
       {/* Trust Badges */}
       <div className="grid grid-cols-3 gap-2 mx-3 mt-3">
         {[
-          { icon: <Zap className="w-4 h-4 text-brand-700" />, text: '10 Min', sub: 'Delivery' },
-          { icon: <Leaf className="w-4 h-4 text-green-600" />, text: '100%', sub: 'Organic' },
-          { icon: <Shield className="w-4 h-4 text-blue-600" />, text: 'FSSAI', sub: 'Certified' },
+          { icon: '⚡', text: '10 Min', sub: 'Delivery', color: 'bg-red-50 border-red-100' },
+          { icon: '🌿', text: '100%', sub: 'Organic', color: 'bg-green-50 border-green-100' },
+          { icon: '✅', text: 'FSSAI', sub: 'Certified', color: 'bg-blue-50 border-blue-100' },
         ].map((b) => (
-          <div key={b.text} className="card p-2.5 flex flex-col items-center text-center">
-            {b.icon}
-            <p className="text-sm font-black text-gray-900 mt-1">{b.text}</p>
-            <p className="text-[10px] text-gray-500">{b.sub}</p>
+          <div key={b.text} className={`${b.color} border rounded-xl p-2.5 flex flex-col items-center text-center`}>
+            <span className="text-xl">{b.icon}</span>
+            <p className="text-sm font-black text-gray-900 mt-1 leading-none">{b.text}</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">{b.sub}</p>
           </div>
         ))}
       </div>
 
+      {/* Offers Strip */}
+      <div className="mx-3 mt-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
+        <span className="text-2xl">🎁</span>
+        <div className="flex-1">
+          <p className="text-sm font-black text-amber-800">FREE delivery above ₹299</p>
+          <p className="text-xs text-amber-600">Today only — shop millet essentials</p>
+        </div>
+        <Link href="/orders" className="text-xs font-bold text-amber-700 flex-shrink-0">Orders →</Link>
+      </div>
+
       {/* Category Filter */}
       <div className="px-3 mt-5">
-        <h2 className="section-title mb-3">Shop by Category</h2>
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 -mx-3 px-3">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-black text-gray-900">Shop by Category</h2>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3" style={{ scrollbarWidth: 'none' }}>
           {CATEGORIES.map((cat) => (
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
-                activeCategory === cat
-                  ? 'bg-brand-700 text-white shadow-brand-sm'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-brand-300'
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`flex-shrink-0 px-3.5 py-2 rounded-full text-xs font-bold transition-all duration-200 ${
+                activeCategory === cat.id
+                  ? 'bg-[#BA181B] text-white shadow-md'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-red-200'
               }`}
             >
-              {cat}
+              {cat.label}
             </button>
           ))}
         </div>
       </div>
 
       {/* Products Grid */}
-      <div className="px-3 mt-4 pb-32">
+      <div className="px-3 mt-4 pb-36">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="section-title">
+          <h2 className="text-base font-black text-gray-900">
             {activeCategory === 'All' ? 'All Products' : activeCategory}
-            <span className="text-brand-700"> ({filtered.length})</span>
+            <span className="text-[#BA181B] font-black"> ({filtered.length})</span>
           </h2>
-          <div className="flex items-center gap-1 text-xs text-gray-500">
-            <Clock className="w-3 h-3" /> Fast Delivery
+          <div className="flex items-center gap-1 text-xs text-gray-400 font-medium">
+            <Clock className="w-3 h-3" /> 10 min
           </div>
         </div>
 
         {filtered.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-4xl mb-3">🌾</p>
-            <p className="text-gray-500 font-medium">No products in this category yet</p>
-            <button onClick={() => setActiveCategory('All')} className="btn-ghost mt-2">Show All</button>
+            <p className="text-5xl mb-3">🌾</p>
+            <p className="text-gray-500 font-semibold">No products in this category</p>
+            <button onClick={() => setActiveCategory('All')} className="btn-ghost mt-3 text-sm">
+              Show All Products
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
@@ -135,9 +162,16 @@ export default function CustomerHomePage({ profile, products }: Props) {
             ))}
           </div>
         )}
+
+        {/* Footer note */}
+        <div className="text-center mt-8 text-xs text-gray-400">
+          <p>🌾 Sourced from certified organic millet farms across India</p>
+          <p className="mt-1">FSSAI License No. 12719016000253</p>
+        </div>
       </div>
 
       <StickyCart />
+      <BottomNav />
     </div>
   )
 }
