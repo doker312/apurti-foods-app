@@ -3,6 +3,13 @@
 -- This fixes cross-role data visibility & insert permissions
 -- ============================================================
 
+-- CRITICAL: Enable REPLICA IDENTITY FULL for Supabase Realtime
+-- Without this, realtime INSERT/UPDATE events may not fire correctly
+ALTER TABLE public.orders REPLICA IDENTITY FULL;
+ALTER TABLE public.order_items REPLICA IDENTITY FULL;
+ALTER TABLE public.delivery_tracking REPLICA IDENTITY FULL;
+ALTER TABLE public.users REPLICA IDENTITY FULL;
+
 -- Fix: Allow all authenticated users to read user profiles
 -- (needed so admin can see customer names in orders, etc.)
 DROP POLICY IF EXISTS "Users can read own profile" ON public.users;

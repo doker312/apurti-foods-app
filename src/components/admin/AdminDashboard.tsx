@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Package, ShoppingBag, Users, Truck,
-  LogOut, Settings, TrendingUp, Activity, Plus, Trash2,
-  Edit3, Check, X, ChevronDown, Search
+  LogOut, Settings, TrendingUp, Plus, Trash2,
+  Edit3, Check, X, Search, RefreshCw
 } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts'
 
@@ -51,30 +51,71 @@ export default function AdminDashboard({ adminProfile, orders: initialOrders, us
   const [editProduct, setEditProduct] = useState<Partial<Product> | null>(null)
   const [productLoading, setProductLoading] = useState(false)
   const [newOrderCount, setNewOrderCount] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState(new Date())
   const supabase = createClient()
   const router = useRouter()
 
-  // Realtime: auto-receive new orders
+  // Function to fetch all fresh orders
+  const fetchOrders = async (silent = true) => {
+    if (!silent) setRefreshing(true)
+    const { data } = await supabase
+      .from('orders')
+      .select('*, users(id, name, email, role, phone), order_items(id, quantity, price, products(id, name, category))')
+      .order('created_at', { ascending: false })
+    if (data) {
+      setLiveOrders(data)
+      setLastUpdated(new Date())
+    }
+    if (!silent) setRefreshing(false)
+  }
+
+  // Realtime + polling hybrid (polling is the reliable fallback)
   useEffect(() => {
+    // Fetch immediately on mount
+    fetchOrders()
+
+    // Poll every 7 seconds — guarantees admin always sees new orders
+    const interval = setInterval(() => fetchOrders(), 7000)
+
+    // Realtime as an optimistic layer on top
     const channel = supabase
-      .channel('admin-orders-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload) => {
-        const { data } = await supabase
-          .from('orders')
-          .select('*, users(id, name, email, role), order_items(id, quantity, price, products(id, name, category))')
-          .eq('id', payload.new.id)
-          .single()
-        if (data) {
-          setLiveOrders((prev) => [data, ...prev])
+      .channel(`admin-realtime-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'orders' },
+        async (payload) => {
+          // Try follow-up query first
+          const { data } = await supabase
+            .from('orders')
+            .select('*, users(id, name, email, role, phone), order_items(id, quantity, price, products(id, name, category))')
+            .eq('id', payload.new.id)
+            .single()
+
+          const newOrder = data || payload.new
+          setLiveOrders((prev) => {
+            if (prev.find((o) => o.id === newOrder.id)) return prev
+            return [newOrder, ...prev]
+          })
           setNewOrderCount((n) => n + 1)
-          setTimeout(() => setNewOrderCount((n) => Math.max(0, n - 1)), 5000)
+          setTimeout(() => setNewOrderCount((n) => Math.max(0, n - 1)), 6000)
         }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
-        setLiveOrders((prev) => prev.map((o) => o.id === payload.new.id ? { ...o, ...payload.new } : o))
-      })
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders' },
+        (payload) => {
+          setLiveOrders((prev) =>
+            prev.map((o) => o.id === payload.new.id ? { ...o, ...payload.new } : o)
+          )
+        }
+      )
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+
+    return () => {
+      clearInterval(interval)
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const handleLogout = async () => {
@@ -209,17 +250,27 @@ export default function AdminDashboard({ adminProfile, orders: initialOrders, us
       <main className="flex-1 lg:ml-64 min-h-screen">
         {/* Top bar */}
         <header className="bg-white shadow-sm sticky top-0 z-10">
-          <div className="px-6 py-4 flex items-center justify-between">
+          <div className="px-6 py-3 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-black text-gray-900 capitalize">{tab}</h1>
-              <p className="text-xs text-gray-500">🟢 Realtime · Apurti Foods Command Center</p>
+              <p className="text-xs text-gray-400">
+                Auto-refresh · Last updated {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               {newOrderCount > 0 && (
-                <span className="bg-[#BA181B] text-white text-xs font-black px-2 py-1 rounded-full animate-pulse">
-                  +{newOrderCount} new
+                <span className="bg-[#BA181B] text-white text-xs font-black px-3 py-1.5 rounded-full animate-pulse">
+                  🔔 +{newOrderCount} new order{newOrderCount > 1 ? 's' : ''}
                 </span>
               )}
+              <button
+                onClick={() => fetchOrders(false)}
+                disabled={refreshing}
+                className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
               {adminProfile.is_demo_user && (
                 <span className="badge bg-amber-100 text-amber-700 text-xs">🎭 Demo</span>
               )}
