@@ -100,7 +100,8 @@ DROP POLICY IF EXISTS "Order owners can read tracking" ON public.delivery_tracki
 CREATE POLICY "Tracking readable by authenticated" ON public.delivery_tracking
   FOR SELECT USING (auth.role() = 'authenticated');
 
--- Ensure realtime is on
-ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.delivery_tracking;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.order_items;
+-- REPLICA IDENTITY FULL is required for Supabase Realtime to send full row data
+-- (supabase_realtime publication was already added in schema.sql — don't re-add)
+ALTER TABLE public.orders REPLICA IDENTITY FULL;
+ALTER TABLE public.order_items REPLICA IDENTITY FULL;
+ALTER TABLE public.users REPLICA IDENTITY FULL;
