@@ -220,14 +220,14 @@ export default function DistributorDashboard({ profile, products, pricing, recen
                   </div>
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     {qty === 0 ? (
-                      <button onClick={() => addItem(product, customPrice)} className="flex items-center gap-1 bg-[#BA181B] text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-90 transition-all shadow-md">
+                      <button onClick={() => addItem(product, '500g', customPrice)} className="flex items-center gap-1 bg-[#BA181B] text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-90 transition-all shadow-md">
                         <Plus className="w-3 h-3" /> Add
                       </button>
                     ) : (
                       <div className="flex items-center gap-2 border border-red-200 bg-red-50 rounded-xl px-2 py-1">
-                        <button onClick={() => removeItem(product.id)} className="w-6 h-6 bg-[#BA181B] text-white rounded-lg flex items-center justify-center active:scale-90"><Minus className="w-3 h-3" /></button>
+                        <button onClick={() => removeItem(product.id, '500g')} className="w-6 h-6 bg-[#BA181B] text-white rounded-lg flex items-center justify-center active:scale-90"><Minus className="w-3 h-3" /></button>
                         <span className="text-sm font-black text-[#BA181B] w-5 text-center">{qty}</span>
-                        <button onClick={() => addItem(product, customPrice)} className="w-6 h-6 bg-[#BA181B] text-white rounded-lg flex items-center justify-center active:scale-90"><Plus className="w-3 h-3" /></button>
+                        <button onClick={() => addItem(product, '500g', customPrice)} className="w-6 h-6 bg-[#BA181B] text-white rounded-lg flex items-center justify-center active:scale-90"><Plus className="w-3 h-3" /></button>
                       </div>
                     )}
                     <p className="text-[9px] text-gray-400">Stock: {product.stock}</p>
