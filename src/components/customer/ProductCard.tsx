@@ -115,6 +115,7 @@ export default function ProductCard({ product, customPrice, showMargin }: Produc
             </div>
           )}
         </div>
+        </div>
 
         {savings > 0 && qty > 0 && (
           <p className="text-[10px] text-green-600 font-semibold mt-1.5">
