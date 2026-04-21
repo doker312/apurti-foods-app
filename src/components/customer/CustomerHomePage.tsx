@@ -6,8 +6,10 @@ import CustomerNav from './CustomerNav'
 import ProductCard from './ProductCard'
 import StickyCart from './StickyCart'
 import BottomNav from './BottomNav'
-import { Zap, Shield, Leaf, Clock, ChevronRight, Star } from 'lucide-react'
+import { Zap, Shield, Leaf, Clock, ChevronRight, Star, Settings, Truck, Building2, User } from 'lucide-react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 const CATEGORIES = [
   { id: 'All', label: '🌾 All', color: '' },
@@ -51,8 +53,21 @@ interface Props {
 }
 
 export default function CustomerHomePage({ profile, products }: Props) {
+  const router = useRouter()
+  const supabase = createClient()
   const [activeCategory, setActiveCategory] = useState('All')
   const [heroBanner, setHeroBanner] = useState(0)
+  const [loginLoading, setLoginLoading] = useState<string | null>(null)
+
+  const handleQuickLogin = async (role: string, email: string, pass: string, path: string) => {
+    setLoginLoading(role)
+    const { data } = await supabase.auth.signInWithPassword({ email, password: pass })
+    if (data?.user) {
+      router.push(path)
+      router.refresh()
+    }
+    setLoginLoading(null)
+  }
 
   const filtered = useMemo(() => {
     if (activeCategory === 'All') return products
@@ -87,6 +102,30 @@ export default function CustomerHomePage({ profile, products }: Props) {
           ))}
         </div>
       </div>
+
+      {!profile && (
+        <div className="mx-3 mt-4 bg-[#F5E6D3] border border-[#E6D5B8] rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-black text-[#8B5A2B] mb-3 text-center uppercase tracking-widest">Platform Access</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { role: 'Customer', icon: User, email: 'customer@apurti.com', pass: 'Customer2026!', path: '/' },
+              { role: 'Distributor', icon: Building2, email: 'wholesale@apurti.com', pass: 'Distributor2026!', path: '/distributor' },
+              { role: 'Delivery', icon: Truck, email: 'driver@apurti.com', pass: 'Delivery2026!', path: '/delivery' },
+              { role: 'Admin', icon: Settings, email: 'admin@apurti.com', pass: 'ApurtiAdmin2026!', path: '/admin' },
+            ].map(l => (
+              <button 
+                key={l.role}
+                onClick={() => handleQuickLogin(l.role, l.email, l.pass, l.path)}
+                disabled={loginLoading !== null}
+                className="flex flex-col items-center justify-center p-3 rounded-xl bg-white/60 hover:bg-white active:scale-95 transition border border-[#E6D5B8] disabled:opacity-50"
+              >
+                <l.icon className="w-5 h-5 text-[#8B5A2B] mb-1" />
+                <span className="text-xs font-bold text-[#8B5A2B]">{loginLoading === l.role ? '...' : l.role}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Trust Badges */}
       <div className="grid grid-cols-3 gap-2 mx-3 mt-3">
