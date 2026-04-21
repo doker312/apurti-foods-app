@@ -2,16 +2,13 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 
 const PRODUCTS = [
-  { name: 'Foxtail Millet Flour', description: 'Stone-ground foxtail millet flour, rich in protein & fiber. Perfect for rotis & dosas.', price_customer: 149, stock: 200, category: 'Flour', image_url: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&q=80' },
-  { name: 'Pearl Millet (Bajra) Atta', description: 'Traditional bajra flour, high in iron and magnesium. Ideal for winter meals.', price_customer: 129, stock: 180, category: 'Flour', image_url: 'https://images.unsplash.com/photo-1609501676725-7186f017a4b7?w=400&q=80' },
-  { name: 'Barnyard Millet Flakes', description: 'Ready-to-cook barnyard millet flakes. Gluten-free, great for porridge & upma.', price_customer: 189, stock: 150, category: 'Ready-to-eat', image_url: 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=400&q=80' },
-  { name: 'Ragi Malt Mix', description: 'Nutritious finger millet malt, enriched with jaggery. A perfect energy drink for all ages.', price_customer: 219, stock: 120, category: 'Beverages', image_url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80' },
-  { name: 'Jowar Pops (Spicy)', description: 'Crunchy sorghum pops with a spicy masala coating. The healthy alternative to popcorn.', price_customer: 99, stock: 5, category: 'Snacks', image_url: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&q=80' },
-  { name: 'Kodo Millet Rice', description: 'Whole kodo millet grains — a diabetic-friendly rice substitute packed with antioxidants.', price_customer: 175, stock: 95, category: 'Grains', image_url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&q=80' },
-  { name: 'Little Millet Khichdi Mix', description: 'Ready-to-cook little millet khichdi with lentils, spices, and vegetables. Done in 15 mins.', price_customer: 159, stock: 80, category: 'Ready-to-eat', image_url: 'https://images.unsplash.com/photo-1631452180775-7c5bacec4e45?w=400&q=80' },
-  { name: 'Proso Millet Trail Mix', description: 'A power-packed mix of proso millet, nuts & seeds. High protein snack for active lifestyles.', price_customer: 249, stock: 4, category: 'Snacks', image_url: 'https://images.unsplash.com/photo-1604004555489-723a93d6ce74?w=400&q=80' },
-  { name: 'Sorghum Breakfast Cereal', description: 'Crunchy sorghum-based breakfast cereal with honey and almond coating.', price_customer: 299, stock: 60, category: 'Ready-to-eat', image_url: 'https://images.unsplash.com/photo-1559181567-c3190bbbce65?w=400&q=80' },
-  { name: 'Mixed Millet Grain Pack', description: 'A curated pack of 5 heirloom millets — perfect for a weekly rotation of healthy meals.', price_customer: 399, stock: 45, category: 'Grains', image_url: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&q=80' },
+  { name: 'Pearl Millet (Bajra) Atta', description: 'Traditional bajra flour, high in iron and magnesium.', price_customer: 129, price_500g: 129, price_10kg: 2300, price_30kg: 6800, stock: 180, category: 'Flour', image_url: '/products/Bajra Atta.jpeg' },
+  { name: 'Barely (Jou) Flour', description: 'Healthy barely flour, great for breads and rotis.', price_customer: 119, price_500g: 119, price_10kg: 2100, price_30kg: 6100, stock: 150, category: 'Flour', image_url: '/products/Barely (Jou) Flour.jpeg' },
+  { name: 'Chana Atta', description: 'Pure chana flour, rich in protein.', price_customer: 139, price_500g: 139, price_10kg: 2500, price_30kg: 7400, stock: 200, category: 'Flour', image_url: '/products/Chana Atta.jpeg' },
+  { name: 'Foxnut (Makhana)', description: 'Premium quality foxnuts. Perfect for light snacking.', price_customer: 199, price_500g: 199, price_10kg: 3500, price_30kg: 10000, stock: 50, category: 'Snacks', image_url: '/products/Foxnut.jpeg' },
+  { name: 'Kuttu Atta', description: 'Buckwheat flour for fasting.', price_customer: 169, price_500g: 169, price_10kg: 3000, price_30kg: 8900, stock: 100, category: 'Flour', image_url: '/products/Kuttu Atta.jpeg' },
+  { name: 'Makka Atta (Corn Flour)', description: 'Traditional corn flour. Essential for makki ki roti.', price_customer: 99, price_500g: 99, price_10kg: 1700, price_30kg: 5000, stock: 120, category: 'Flour', image_url: '/products/Makka Atta(Corn Flour).jpeg' },
+  { name: 'Soyabean Atta', description: 'Protein-rich soyabean flour.', price_customer: 149, price_500g: 149, price_10kg: 2600, price_30kg: 7600, stock: 80, category: 'Flour', image_url: '/products/Soyabean Atta.jpeg' },
 ]
 
 const DEMO_USERS = [
@@ -79,20 +76,22 @@ export async function GET() {
       const pricingData = products.map((p: typeof products[0], i: number) => ({
         distributor_id: dist1Id,
         product_id: p.id,
+        packing: '500g',
         custom_price: Math.round(p.price_customer * (i % 2 === 0 ? 0.78 : 0.82)),
         custom_offer: i % 2 === 0 ? 22 : 18,
       }))
-      await supabase.from('distributor_pricing').upsert(pricingData, { onConflict: 'distributor_id,product_id' })
+      await supabase.from('distributor_pricing').upsert(pricingData, { onConflict: 'distributor_id,product_id,packing' })
     }
 
     if (dist2Id && products.length > 0) {
       const pricingData2 = products.slice(0, 6).map((p: typeof products[0]) => ({
         distributor_id: dist2Id,
         product_id: p.id,
+        packing: '500g',
         custom_price: Math.round(p.price_customer * 0.75),
         custom_offer: 25,
       }))
-      await supabase.from('distributor_pricing').upsert(pricingData2, { onConflict: 'distributor_id,product_id' })
+      await supabase.from('distributor_pricing').upsert(pricingData2, { onConflict: 'distributor_id,product_id,packing' })
     }
 
     // Create demo orders
