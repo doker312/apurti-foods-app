@@ -6,6 +6,7 @@ import { formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/li
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { registerDistributor } from '@/app/actions/admin'
 import {
   LayoutDashboard, Package, ShoppingBag, Users, Truck,
   LogOut, Settings, TrendingUp, Plus, Trash2,
@@ -55,8 +56,82 @@ export default function AdminDashboard({ adminProfile, orders: initialOrders, us
   const [newOrderCount, setNewOrderCount] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(new Date())
+
+  // New Distributor State
+  const [isAddingDistributor, setIsAddingDistributor] = useState(false)
+  const [distributorLoading, setDistributorLoading] = useState(false)
+  const [distError, setDistError] = useState('')
+  const [distSuccess, setDistSuccess] = useState('')
+
+  // New Pricing State
+  const [selectedDistId, setSelectedDistId] = useState<string>('')
+  const [distPricingMap, setDistPricingMap] = useState<Record<string, Record<string, number>>>({})
+  const [savingPriceId, setSavingPriceId] = useState<string | null>(null)
+
   const supabase = createClient()
   const router = useRouter()
+
+  const handleRegisterDistributor = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setDistributorLoading(true)
+    setDistError('')
+    setDistSuccess('')
+    const formData = new FormData(e.currentTarget)
+    try {
+      const res = await registerDistributor(null, formData)
+      if (res.error) setDistError(res.error)
+      else if (res.success) {
+        setDistSuccess('Account synthesized successfully!')
+        setTimeout(() => { setIsAddingDistributor(false); setDistSuccess('') }, 2000)
+      }
+    } catch (err: any) {
+      setDistError(err.message || 'Failed')
+    } finally {
+      setDistributorLoading(false)
+    }
+  }
+
+  const handleUpdateCustomPrice = async (distId: string, productId: string, customPrice: number) => {
+    setSavingPriceId(`${distId}-${productId}`)
+    try {
+      // Check if exists
+      const { data: existing } = await supabase.from('distributor_pricing').select('id').eq('distributor_id', distId).eq('product_id', productId).maybeSingle()
+      
+      if (existing) {
+        await supabase.from('distributor_pricing').update({ custom_price: customPrice }).eq('id', existing.id)
+      } else {
+        await supabase.from('distributor_pricing').insert({
+          distributor_id: distId,
+          product_id: productId,
+          custom_price: customPrice
+        })
+      }
+
+      setDistPricingMap(prev => ({
+        ...prev,
+        [distId]: {
+          ...(prev[distId] || {}),
+          [productId]: customPrice
+        }
+      }))
+    } finally {
+      setSavingPriceId(null)
+    }
+  }
+
+  // Fetch specific pricing map for a distributor when selected
+  useEffect(() => {
+    if (!selectedDistId) return
+    const fetchDistPricing = async () => {
+      const { data } = await supabase.from('distributor_pricing').select('*').eq('distributor_id', selectedDistId)
+      if (data) {
+        const pricingMap: Record<string, number> = {}
+        data.forEach(p => pricingMap[p.product_id] = p.custom_price)
+        setDistPricingMap((prev) => ({ ...prev, [selectedDistId]: pricingMap }))
+      }
+    }
+    fetchDistPricing()
+  }, [selectedDistId])
 
   // Function to fetch all fresh orders
   const fetchOrders = async (silent = true) => {
@@ -650,18 +725,82 @@ export default function AdminDashboard({ adminProfile, orders: initialOrders, us
               <div className="card p-5">
                 <h3 className="section-title mb-2">Distributor Pricing Management</h3>
                 <p className="text-sm text-gray-500 mb-5">Set custom prices and offers for each distributor. These override the default customer price.</p>
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
-                  <p className="font-bold mb-1">💡 How Custom Pricing Works</p>
-                  <p>Use the Supabase dashboard → Table Editor → distributor_pricing to set custom prices per distributor-product combination. Changes reflect immediately in the distributor's catalog.</p>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Select Distributor</label>
+                  <select 
+                    className="input max-w-md bg-gray-50 uppercase text-sm font-bold tracking-wider"
+                    value={selectedDistId}
+                    onChange={(e) => setSelectedDistId(e.target.value)}
+                  >
+                    <option value="">-- Choose a Distributor --</option>
+                    {users.filter(u => u.role === 'distributor').map(d => (
+                      <option key={d.id} value={d.id}>{d.name} ({d.email})</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <a href="https://dmhujjpsrwnzjllidhzr.supabase.co/project/default/editor" target="_blank" rel="noreferrer" className="btn-primary text-center text-sm py-3">
-                    Open Supabase Editor ↗
-                  </a>
-                  <a href="https://dmhujjpsrwnzjllidhzr.supabase.co" target="_blank" rel="noreferrer" className="btn-secondary text-center text-sm py-3">
-                    Supabase Dashboard ↗
-                  </a>
-                </div>
+
+                {selectedDistId ? (
+                  <div className="bg-white border text-sm border-gray-200 rounded-xl overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          <th className="text-left font-semibold text-gray-500 px-4 py-3">Product</th>
+                          <th className="text-left font-semibold text-gray-500 px-4 py-3">Retail Price</th>
+                          <th className="text-left font-semibold text-[#BA181B] px-4 py-3">Custom B2B Price</th>
+                          <th className="w-24"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {liveProducts.map(p => {
+                          const currentOverride = distPricingMap[selectedDistId]?.[p.id] ?? ''
+                          return (
+                            <tr key={p.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <p className="font-bold text-gray-900">{p.name}</p>
+                                <p className="text-[10px] text-gray-400">{p.category}</p>
+                              </td>
+                              <td className="px-4 py-3 text-gray-500">
+                                {formatCurrency(p.price_customer)}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="relative max-wxs">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
+                                  <input 
+                                    type="number"
+                                    className="input pl-8 py-2 w-32 border-gray-300"
+                                    placeholder={p.price_customer.toString()}
+                                    value={currentOverride}
+                                    onChange={(e) => {
+                                      const val = e.target.value
+                                      setDistPricingMap(prev => ({
+                                        ...prev, [selectedDistId]: { ...(prev[selectedDistId] || {}), [p.id]: val ? parseFloat(val) : 0 }
+                                      }))
+                                    }}
+                                  />
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <button 
+                                  onClick={() => handleUpdateCustomPrice(selectedDistId, p.id, distPricingMap[selectedDistId]?.[p.id] || p.price_customer)}
+                                  disabled={savingPriceId === `${selectedDistId}-${p.id}`}
+                                  className="text-xs bg-[#BA181B] text-white px-3 py-1.5 rounded-lg active:scale-95 disabled:opacity-50"
+                                >
+                                  {savingPriceId === `${selectedDistId}-${p.id}` ? 'Saving...' : 'Save'}
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-10 bg-gray-50 border border-dashed border-gray-200 rounded-xl">
+                    <p className="text-gray-400 font-medium tracking-wide text-sm">Select a distributor above to configure custom pricing</p>
+                  </div>
+                )}
+
               </div>
             </div>
           )}
@@ -669,38 +808,81 @@ export default function AdminDashboard({ adminProfile, orders: initialOrders, us
           {/* Distributors Tab */}
           {tab === 'distributors' && (
             <div className="animate-fade-in">
-              <div className="card p-5 overflow-hidden">
-                <h3 className="section-title mb-2">Distributor Directory</h3>
-                <p className="text-sm text-gray-500 mb-5">Manage all registered distributors on the platform.</p>
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                      {['Name', 'Email', 'Location/City', 'Status'].map((h) => (
-                        <th key={h} className="text-left text-xs font-semibold text-gray-500 px-4 py-3">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {users.filter(u => u.role === 'distributor').map((u) => (
-                      <tr key={u.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-semibold text-gray-900">{u.name}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{u.email}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">Verified</td>
-                        <td className="px-4 py-3">
-                          <span className="badge bg-green-50 text-green-700 text-xs">Active</span>
-                        </td>
-                      </tr>
-                    ))}
-                    {users.filter(u => u.role === 'distributor').length === 0 && (
+              <div className="card p-5 overflow-visible">
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="section-title mb-1">Distributor Directory</h3>
+                    <p className="text-sm text-gray-500 mt-1">Manage all registered distributors on the platform.</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsAddingDistributor(!isAddingDistributor)}
+                    className="btn-primary py-2 px-4 text-sm flex items-center gap-2"
+                  >
+                    {isAddingDistributor ? <><X className="w-4 h-4"/> Cancel</> : <><Plus className="w-4 h-4"/> Add Distributor</>}
+                  </button>
+                </div>
+
+                {isAddingDistributor && (
+                  <form onSubmit={handleRegisterDistributor} className="bg-[#FEF9F4] border border-[#E6D5B8] p-5 rounded-xl mb-6 shadow-sm">
+                    <h4 className="font-black text-[#8B5A2B] mb-4">Register New Distributor</h4>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Business Name</label>
+                        <input name="name" type="text" className="input py-2" required placeholder="XYZ Traders" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
+                        <input name="phone" type="tel" className="input py-2" required placeholder="+91 9999999999" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Email Address</label>
+                        <input name="email" type="email" className="input py-2" required placeholder="contact@xyz.com" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Secure Password</label>
+                        <input name="password" type="password" className="input py-2" required placeholder="••••••••" minLength={6} />
+                      </div>
+                    </div>
+                    {distError && <p className="text-xs font-bold text-red-600 bg-red-100 p-2 rounded-lg mb-3">{distError}</p>}
+                    {distSuccess && <p className="text-xs font-bold text-green-700 bg-green-100 p-2 rounded-lg mb-3">{distSuccess}</p>}
+                    <button type="submit" disabled={distributorLoading} className="w-full bg-[#8B5A2B] hover:bg-[#724a23] text-white py-2.5 rounded-lg text-sm font-bold active:scale-[0.98] transition disabled:opacity-60">
+                      {distributorLoading ? 'Synthesizing Account...' : 'Generate Distributor Account'}
+                    </button>
+                  </form>
+                )}
+
+                <div className="border border-gray-100 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-100">
                       <tr>
-                        <td colSpan={4} className="px-4 py-6 text-center text-gray-500 text-xs">No distributors found.</td>
+                        {['Name', 'Email', 'Location/City', 'Status'].map((h) => (
+                          <th key={h} className="text-left text-xs font-semibold text-gray-500 px-4 py-3">{h}</th>
+                        ))}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {users.filter(u => u.role === 'distributor').map((u) => (
+                        <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3"><p className="font-bold text-gray-900">{u.name}</p></td>
+                          <td className="px-4 py-3 text-gray-500">{u.email}</td>
+                          <td className="px-4 py-3 text-gray-500">Verified India</td>
+                          <td className="px-4 py-3">
+                            <span className="badge bg-green-50 text-green-700 text-xs">Active</span>
+                          </td>
+                        </tr>
+                      ))}
+                      {users.filter(u => u.role === 'distributor').length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-10 text-center text-gray-400 font-medium tracking-wide">No distributors found. Click 'Add Distributor' above.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
+
         </div>
       </main>
     </div>
