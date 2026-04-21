@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
+import { Settings, Truck, Building2, User } from 'lucide-react'
 
 
 export default function LoginPage() {
@@ -14,6 +15,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [loginLoading, setLoginLoading] = useState<string | null>(null)
+
+  const handleQuickLogin = async (role: string, email: string, pass: string, path: string) => {
+    setLoginLoading(role)
+    setError('')
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass })
+      if (error) { setError(error.message); return }
+      if (data.user) router.replace(path)
+    } finally {
+      setLoginLoading(null)
+    }
+  }
 
   const handleGoogleLogin = async () => {
     setLoading(true)
@@ -172,7 +186,27 @@ export default function LoginPage() {
               </form>
             )}
           </div>
-
+          <div className="mt-6 bg-[#F5E6D3] border border-[#E6D5B8] rounded-2xl p-5 shadow-sm">
+            <h3 className="text-sm font-black text-[#8B5A2B] mb-4 text-center uppercase tracking-widest">Quick Platform Access</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { role: 'Customer', icon: User, email: 'customer@apurti.com', pass: 'Customer2026!', path: '/' },
+                { role: 'Distributor', icon: Building2, email: 'wholesale@apurti.com', pass: 'Distributor2026!', path: '/distributor' },
+                { role: 'Delivery', icon: Truck, email: 'driver@apurti.com', pass: 'Delivery2026!', path: '/delivery' },
+                { role: 'Admin', icon: Settings, email: 'admin@apurti.com', pass: 'ApurtiAdmin2026!', path: '/admin' },
+              ].map(l => (
+                <button 
+                  key={l.role}
+                  onClick={() => handleQuickLogin(l.role, l.email, l.pass, l.path)}
+                  disabled={loginLoading !== null}
+                  className="flex flex-col items-center justify-center p-3.5 rounded-xl bg-white/60 hover:bg-white active:scale-95 transition-all border border-[#E6D5B8] disabled:opacity-50 hover:shadow-sm"
+                >
+                  <l.icon className="w-5 h-5 text-[#8B5A2B] mb-1.5" />
+                  <span className="text-xs font-bold text-[#8B5A2B]">{loginLoading === l.role ? '...' : l.role}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
         </div>
       </div>

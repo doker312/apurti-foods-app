@@ -9,11 +9,9 @@ export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let profile = null
-  if (user) {
-    const { data } = await supabase.from('users').select('*').eq('id', user.id).single()
-    profile = data
-  }
+  if (!user) redirect('/login')
+
+  const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   const { data: products } = await supabase.from('products').select('*').order('name')
 
   return (
