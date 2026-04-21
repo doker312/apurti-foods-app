@@ -11,13 +11,11 @@ const PRODUCTS = [
   { name: 'Soyabean Atta', description: 'Protein-rich soyabean flour.', price_customer: 149, price_500g: 149, price_10kg: 2600, price_30kg: 7600, stock: 80, category: 'Flour', image_url: '/products/Soyabean Atta.jpeg' },
 ]
 
-const DEMO_USERS = [
-  { name: 'Demo Customer', email: 'customer@demo.apurti.com', role: 'customer', is_demo_user: true, password: 'demo123' },
-  { name: 'Ram Distributors', email: 'distributor@demo.com', role: 'distributor', is_demo_user: true, password: '123456' },
-  { name: 'Shyam Wholesale', email: 'distributor2@demo.com', role: 'distributor', is_demo_user: true, password: '123456' },
-  { name: 'Raja Rider', email: 'delivery@demo.com', role: 'delivery', is_demo_user: true, password: '123456' },
-  { name: 'Priya Speed', email: 'delivery2@demo.com', role: 'delivery', is_demo_user: true, password: '123456' },
-  { name: 'Admin Apurti', email: 'admin@apurti.com', role: 'admin', is_demo_user: true, password: 'admin123' },
+const PROD_USERS = [
+  { name: 'Apurti Admin', email: 'admin@apurti.com', role: 'admin', is_demo_user: false, password: 'ApurtiAdmin2026!' },
+  { name: 'Raju Distributor', email: 'wholesale@apurti.com', role: 'distributor', is_demo_user: false, password: 'Distributor2026!' },
+  { name: 'Express Delivery', email: 'driver@apurti.com', role: 'delivery', is_demo_user: false, password: 'Delivery2026!' },
+  { name: 'Demo Customer', email: 'customer@apurti.com', role: 'customer', is_demo_user: false, password: 'Customer2026!' },
 ]
 
 export async function GET() {
@@ -26,7 +24,7 @@ export async function GET() {
 
     // Create auth users and profiles
     const createdUsers: Record<string, string> = {}
-    for (const u of DEMO_USERS) {
+    for (const u of PROD_USERS) {
       // Try to create auth user
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
         email: u.email,
@@ -69,8 +67,7 @@ export async function GET() {
     const products = insertedProducts || []
 
     // Use first distributor for pricing
-    const dist1Id = createdUsers['distributor_distributor@demo.com']
-    const dist2Id = createdUsers['distributor_distributor2@demo.com']
+    const dist1Id = createdUsers['distributor_wholesale@apurti.com']
 
     if (dist1Id && products.length > 0) {
       const pricingData = products.map((p: typeof products[0], i: number) => ({
@@ -83,20 +80,11 @@ export async function GET() {
       await supabase.from('distributor_pricing').upsert(pricingData, { onConflict: 'distributor_id,product_id,packing' })
     }
 
-    if (dist2Id && products.length > 0) {
-      const pricingData2 = products.slice(0, 6).map((p: typeof products[0]) => ({
-        distributor_id: dist2Id,
-        product_id: p.id,
-        packing: '500g',
-        custom_price: Math.round(p.price_customer * 0.75),
-        custom_offer: 25,
-      }))
-      await supabase.from('distributor_pricing').upsert(pricingData2, { onConflict: 'distributor_id,product_id,packing' })
-    }
+
 
     // Create demo orders
-    const customerId = createdUsers['customer_customer@demo.apurti.com']
-    const deliveryId = createdUsers['delivery_delivery@demo.com']
+    const customerId = createdUsers['customer_customer@apurti.com']
+    const deliveryId = createdUsers['delivery_driver@apurti.com']
     const statuses = ['pending', 'accepted', 'picked', 'out_for_delivery', 'delivered', 'delivered', 'delivered', 'pending', 'accepted', 'delivered']
 
     if (customerId && products.length >= 2) {

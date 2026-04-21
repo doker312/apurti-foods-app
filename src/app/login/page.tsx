@@ -5,12 +5,6 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 
-const DEMO_ACCOUNTS = [
-  { role: 'Customer', email: 'customer@demo.apurti.com', password: 'demo123', description: 'Browse & order as a B2C customer', icon: '🛒', color: 'bg-orange-50 border-orange-200 text-orange-700' },
-  { role: 'Distributor', email: 'distributor@demo.com', password: '123456', description: 'Bulk ordering with custom pricing', icon: '🏪', color: 'bg-blue-50 border-blue-200 text-blue-700' },
-  { role: 'Delivery', email: 'delivery@demo.com', password: '123456', description: 'Manage & track deliveries', icon: '🚚', color: 'bg-green-50 border-green-200 text-green-700' },
-  { role: 'Admin', email: 'admin@apurti.com', password: 'admin123', description: 'Full platform control', icon: '⚙️', color: 'bg-purple-50 border-purple-200 text-purple-700' },
-]
 
 export default function LoginPage() {
   const router = useRouter()
@@ -20,7 +14,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [demoLoading, setDemoLoading] = useState<string | null>(null)
 
   const handleGoogleLogin = async () => {
     setLoading(true)
@@ -62,26 +55,6 @@ export default function LoginPage() {
     }
   }
 
-  const handleDemoLogin = async (acc: typeof DEMO_ACCOUNTS[0]) => {
-    setDemoLoading(acc.role)
-    setError('')
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: acc.email,
-        password: acc.password,
-      })
-      if (error) { setError(`Demo login failed: ${error.message}`); return }
-      if (data.user) {
-        const role = acc.role.toLowerCase()
-        if (role === 'admin') router.replace('/admin')
-        else if (role === 'distributor') router.replace('/distributor')
-        else if (role === 'delivery') router.replace('/delivery')
-        else router.replace('/')
-      }
-    } finally {
-      setDemoLoading(null)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-red-950 flex">
@@ -200,27 +173,7 @@ export default function LoginPage() {
             )}
           </div>
 
-          {/* Demo Accounts */}
-          <div className="mt-6">
-            <p className="text-gray-400 text-xs text-center mb-3 font-medium uppercase tracking-wider">Try Demo Accounts</p>
-            <div className="grid grid-cols-2 gap-3">
-              {DEMO_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.role}
-                  onClick={() => handleDemoLogin(acc)}
-                  disabled={demoLoading !== null}
-                  className={`border rounded-xl p-3 text-left transition-all duration-200 hover:shadow-md disabled:opacity-60 ${acc.color}`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">{acc.icon}</span>
-                    <span className="font-bold text-sm">{demoLoading === acc.role ? 'Loading...' : acc.role}</span>
-                  </div>
-                  <p className="text-xs opacity-80 leading-tight">{acc.description}</p>
-                </button>
-              ))}
-            </div>
-            <p className="text-center text-xs text-gray-500 mt-3">First run? <a href="/api/seed" className="text-brand-700 font-semibold hover:underline">Seed demo data →</a></p>
-          </div>
+
         </div>
       </div>
     </div>
