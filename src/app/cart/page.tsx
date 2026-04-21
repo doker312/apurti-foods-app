@@ -56,8 +56,8 @@ export default function CartPage() {
 
         {/* Cart Items */}
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 divide-y divide-gray-50">
-          {items.map(({ product, quantity, custom_price }) => (
-            <div key={product.id} className="p-4 flex items-center gap-3">
+          {items.map(({ product, packing, quantity, custom_price }) => (
+            <div key={`${product.id}-${packing}`} className="p-4 flex items-center gap-3">
               <div className="w-16 h-16 bg-[#FEF9F4] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
                 <Image
                   src={product.image_url || 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=100&q=80'}
@@ -69,7 +69,7 @@ export default function CartPage() {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-gray-900 truncate">{product.name}</p>
+                <p className="font-bold text-sm text-gray-900 truncate">{product.name} ({packing})</p>
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">{product.category}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-sm font-black text-[#BA181B]">
@@ -82,14 +82,14 @@ export default function CartPage() {
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 <button
-                  onClick={() => removeItem(product.id)}
+                  onClick={() => removeItem(product.id, packing)}
                   className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 text-[#BA181B] flex items-center justify-center active:scale-90 transition-all"
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
                 <span className="text-sm font-black text-gray-900 w-5 text-center">{quantity}</span>
                 <button
-                  onClick={() => addItem(product, custom_price)}
+                  onClick={() => addItem(product, packing, custom_price)}
                   className="w-7 h-7 rounded-lg bg-[#BA181B] text-white flex items-center justify-center active:scale-90 transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" />

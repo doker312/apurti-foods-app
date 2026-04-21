@@ -63,7 +63,7 @@ export default function OrdersClient({ orders: initialOrders, userId }: Props) {
           // Fetch full order with items
           const { data } = await supabase
             .from('orders')
-            .select('*, order_items(id, quantity, price, products(id, name, category, image_url))')
+            .select('*, order_items(id, packing, quantity, price, products(id, name, category, image_url))')
             .eq('id', payload.new.id)
             .single()
           if (data) setOrders((prev) => [data, ...prev])
@@ -78,7 +78,7 @@ export default function OrdersClient({ orders: initialOrders, userId }: Props) {
     setRefreshing(true)
     const { data } = await supabase
       .from('orders')
-      .select('*, order_items(id, quantity, price, products(id, name, category, image_url))')
+      .select('*, order_items(id, packing, quantity, price, products(id, name, category, image_url))')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
     if (data) setOrders(data)
@@ -141,7 +141,7 @@ export default function OrdersClient({ orders: initialOrders, userId }: Props) {
                     {(order.order_items || []).slice(0, 3).map((item) => (
                       <div key={item.id} className="flex justify-between text-sm">
                         <span className="text-gray-600 truncate flex-1 mr-2">
-                          {item.products?.name || 'Product'} × {item.quantity}
+                          {item.products?.name || 'Product'} {item.packing ? `(${item.packing})` : ''} × {item.quantity}
                         </span>
                         <span className="font-semibold text-gray-900 flex-shrink-0">
                           {formatCurrency(item.price * item.quantity)}
@@ -170,6 +170,18 @@ export default function OrdersClient({ orders: initialOrders, userId }: Props) {
                       <p className="text-xs text-gray-500 font-medium">
                         {STATUS_TEXT[order.status] || getStatusLabel(order.status)}
                       </p>
+                      {order.status === 'out_for_delivery' && (
+                        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="relative flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                            </span>
+                            <span className="text-xs font-bold text-amber-800">Your order is arriving now!</span>
+                          </div>
+                          <span className="text-[10px] bg-white px-2 py-1 rounded-lg border border-amber-100 font-medium">View map ↗</span>
+                        </div>
+                      )}
                     </div>
                   )}
 

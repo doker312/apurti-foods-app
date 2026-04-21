@@ -46,8 +46,9 @@ export default function CheckoutPage() {
         items.map((i) => ({
           order_id: order.id,
           product_id: i.product.id,
+          packing: i.packing,
           quantity: i.quantity,
-          price: i.custom_price ?? i.product.price_customer,
+          price: i.custom_price ?? (i.packing === '500g' ? i.product.price_customer : (i.packing === '10Kg' ? (i.product.price_10kg || i.product.price_customer * 18) : (i.product.price_30kg || i.product.price_customer * 52))),
         }))
       )
 
@@ -131,10 +132,10 @@ export default function CheckoutPage() {
             <Package className="w-4 h-4 text-gray-500" />
             <h3 className="font-black text-gray-900 text-sm">Order Summary</h3>
           </div>
-          {items.map(({ product, quantity, custom_price }) => (
-            <div key={product.id} className="flex justify-between text-sm text-gray-600 mb-2">
-              <span className="truncate flex-1 mr-2">{product.name} × {quantity}</span>
-              <span className="font-semibold flex-shrink-0">{formatCurrency((custom_price ?? product.price_customer) * quantity)}</span>
+          {items.map(({ product, packing, quantity, custom_price }) => (
+            <div key={`${product.id}-${packing}`} className="flex justify-between text-sm text-gray-600 mb-2">
+              <span className="truncate flex-1 mr-2">{product.name} ({packing}) × {quantity}</span>
+              <span className="font-semibold flex-shrink-0">{formatCurrency((custom_price ?? (packing === '500g' ? product.price_customer : (packing === '10Kg' ? (product.price_10kg || product.price_customer * 18) : (product.price_30kg || product.price_customer * 52)))) * quantity)}</span>
             </div>
           ))}
           <div className="h-px bg-gray-100 my-3" />

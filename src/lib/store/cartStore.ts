@@ -4,9 +4,9 @@ import { CartItem, Product } from '@/lib/types'
 
 interface CartStore {
   items: CartItem[]
-  addItem: (product: Product, customPrice?: number) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
+  addItem: (product: Product, packing?: string, customPrice?: number) => void
+  removeItem: (productId: string, packing?: string) => void
+  updateQuantity: (productId: string, packing: string, quantity: number) => void
   clearCart: () => void
   getTotalItems: () => number
   getTotalAmount: () => number
@@ -17,52 +17,56 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
 
-      addItem: (product, customPrice) => {
+      addItem: (product, packing = '500g', customPrice) => {
         set((state) => {
-          const existing = state.items.find((i) => i.product.id === product.id)
+          const existing = state.items.find((i) => i.product.id === product.id && i.packing === packing)
           if (existing) {
             return {
               items: state.items.map((i) =>
-                i.product.id === product.id
+                (i.product.id === product.id && i.packing === packing)
                   ? { ...i, quantity: i.quantity + 1 }
                   : i
               ),
             }
           }
+          let basePrice = product.price_customer
+          if (packing === '10Kg' && product.price_10kg) basePrice = product.price_10kg
+          if (packing === '30Kg' && product.price_30kg) basePrice = product.price_30kg
+          
           return {
-            items: [...state.items, { product, quantity: 1, custom_price: customPrice }],
+            items: [...state.items, { product, packing, quantity: 1, custom_price: customPrice ?? basePrice }],
           }
         })
       },
 
-      removeItem: (productId) => {
+      removeItem: (productId, packing = '500g') => {
         set((state) => {
-          const existing = state.items.find((i) => i.product.id === productId)
+          const existing = state.items.find((i) => i.product.id === productId && i.packing === packing)
           if (existing && existing.quantity > 1) {
             return {
               items: state.items.map((i) =>
-                i.product.id === productId
+                (i.product.id === productId && i.packing === packing)
                   ? { ...i, quantity: i.quantity - 1 }
                   : i
               ),
             }
           }
           return {
-            items: state.items.filter((i) => i.product.id !== productId),
+            items: state.items.filter((i) => !(i.product.id === productId && i.packing === packing)),
           }
         })
       },
 
-      updateQuantity: (productId, quantity) => {
+      updateQuantity: (productId, packing, quantity) => {
         if (quantity <= 0) {
           set((state) => ({
-            items: state.items.filter((i) => i.product.id !== productId),
+            items: state.items.filter((i) => !(i.product.id === productId && i.packing === packing)),
           }))
           return
         }
         set((state) => ({
           items: state.items.map((i) =>
-            i.product.id === productId ? { ...i, quantity } : i
+            (i.product.id === productId && i.packing === packing) ? { ...i, quantity } : i
           ),
         }))
       },

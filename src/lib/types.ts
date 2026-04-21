@@ -16,6 +16,9 @@ export interface Product {
   description: string
   image_url: string
   price_customer: number
+  price_500g?: number
+  price_10kg?: number
+  price_30kg?: number
   stock: number
   category: string
   created_at?: string
@@ -25,6 +28,7 @@ export interface DistributorPricing {
   id: string
   distributor_id: string
   product_id: string
+  packing?: string
   custom_price: number
   custom_offer: number
   products?: Product
@@ -51,6 +55,7 @@ export interface OrderItem {
   id: string
   order_id: string
   product_id: string
+  packing?: string
   quantity: number
   price: number
   products?: Product
@@ -76,6 +81,7 @@ export interface DistributorRequest {
 
 export interface CartItem {
   product: Product
+  packing: string
   quantity: number
   custom_price?: number
 }

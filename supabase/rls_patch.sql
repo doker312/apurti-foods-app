@@ -105,3 +105,24 @@ CREATE POLICY "Tracking readable by authenticated" ON public.delivery_tracking
 ALTER TABLE public.orders REPLICA IDENTITY FULL;
 ALTER TABLE public.order_items REPLICA IDENTITY FULL;
 ALTER TABLE public.users REPLICA IDENTITY FULL;
+ALTER TABLE public.products REPLICA IDENTITY FULL;
+
+-- ============================================================
+-- FEATURE UPDATE: PACKING OPTIONS (500g, 10Kg, 30Kg)
+-- ============================================================
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_500g NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_10kg NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_30kg NUMERIC(10,2) DEFAULT 0;
+
+-- Update existing items to copy the base price to the 500g, 10kg, 30kg variants for continuity
+UPDATE public.products SET price_500g = price_customer WHERE price_500g = 0;
+UPDATE public.products SET price_10kg = price_customer * 18 WHERE price_10kg = 0;
+UPDATE public.products SET price_30kg = price_customer * 52 WHERE price_30kg = 0;
+
+-- Orders and Distributor Packing
+ALTER TABLE public.order_items ADD COLUMN IF NOT EXISTS packing TEXT DEFAULT '500g';
+ALTER TABLE public.distributor_pricing ADD COLUMN IF NOT EXISTS packing TEXT DEFAULT '500g';
+
+-- Modify unique constraints if needed for distributor pricing
+ALTER TABLE public.distributor_pricing DROP CONSTRAINT IF EXISTS distributor_pricing_distributor_id_product_id_key;
+ALTER TABLE public.distributor_pricing ADD CONSTRAINT distributor_pricing_distributor_id_product_id_packing_key UNIQUE (distributor_id, product_id, packing);

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ShoppingCart, Bell, User, Search } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cartStore'
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 interface CustomerNavProps {
   isDemoUser?: boolean
@@ -35,7 +36,7 @@ export default function CustomerNav({ isDemoUser }: CustomerNavProps) {
         <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-brand-700 flex items-center justify-center text-white font-black text-sm">A</div>
+            <Image src="/logo.png" alt="Apurti Logo" width={32} height={32} className="rounded-lg object-contain bg-white shadow-sm" unoptimized />
             <div>
               <p className="font-black text-sm text-gray-900 leading-none">Apurti</p>
               <p className="text-[10px] text-gray-500 leading-none">Foods</p>

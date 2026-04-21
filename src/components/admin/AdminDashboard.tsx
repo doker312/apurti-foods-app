@@ -5,6 +5,7 @@ import { Order, UserProfile, Product } from '@/lib/types'
 import { formatCurrency, formatDate, getStatusColor, getStatusLabel } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   LayoutDashboard, Package, ShoppingBag, Users, Truck,
   LogOut, Settings, TrendingUp, Plus, Trash2,
@@ -21,13 +22,14 @@ interface Props {
   stats: { totalOrders: number; revenue: number; activeUsers: number; activeDeliveries: number }
 }
 
-type AdminTab = 'dashboard' | 'orders' | 'products' | 'users' | 'pricing'
+type AdminTab = 'dashboard' | 'orders' | 'products' | 'users' | 'distributors' | 'pricing'
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'products', label: 'Products', icon: Package },
   { id: 'users', label: 'Users', icon: Users },
+  { id: 'distributors', label: 'Distributors', icon: Users },
   { id: 'pricing', label: 'Pricing', icon: Settings },
 ]
 
@@ -202,7 +204,7 @@ export default function AdminDashboard({ adminProfile, orders: initialOrders, us
         {/* Logo */}
         <div className="p-6 border-b border-gray-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-700 flex items-center justify-center text-white font-black text-lg">A</div>
+            <Image src="/logo.png" alt="Apurti Logo" width={40} height={40} className="rounded-xl object-contain bg-white" unoptimized />
             <div>
               <p className="font-black text-white leading-none">Apurti Foods</p>
               <p className="text-xs text-gray-400">Admin Panel</p>
@@ -293,6 +295,13 @@ export default function AdminDashboard({ adminProfile, orders: initialOrders, us
                 </button>
               )
             })}
+            <button
+              onClick={handleLogout}
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all bg-red-50 text-red-600 hover:bg-red-100 ml-auto"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </button>
           </div>
         </header>
 
@@ -641,6 +650,42 @@ export default function AdminDashboard({ adminProfile, orders: initialOrders, us
                     Supabase Dashboard ↗
                   </a>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Distributors Tab */}
+          {tab === 'distributors' && (
+            <div className="animate-fade-in">
+              <div className="card p-5 overflow-hidden">
+                <h3 className="section-title mb-2">Distributor Directory</h3>
+                <p className="text-sm text-gray-500 mb-5">Manage all registered distributors on the platform.</p>
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      {['Name', 'Email', 'Location/City', 'Status'].map((h) => (
+                        <th key={h} className="text-left text-xs font-semibold text-gray-500 px-4 py-3">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {users.filter(u => u.role === 'distributor').map((u) => (
+                      <tr key={u.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-semibold text-gray-900">{u.name}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{u.email}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">Verified</td>
+                        <td className="px-4 py-3">
+                          <span className="badge bg-green-50 text-green-700 text-xs">Active</span>
+                        </td>
+                      </tr>
+                    ))}
+                    {users.filter(u => u.role === 'distributor').length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-6 text-center text-gray-500 text-xs">No distributors found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

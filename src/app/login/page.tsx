@@ -93,7 +93,7 @@ export default function LoginPage() {
 
         <div className="relative">
           <div className="flex items-center gap-3 mb-16">
-            <div className="w-12 h-12 rounded-2xl bg-brand-700 flex items-center justify-center text-white text-2xl font-black shadow-brand-lg">A</div>
+            <Image src="/logo.png" alt="Apurti Logo" width={64} height={64} className="rounded-2xl object-contain shadow-brand-lg" unoptimized />
             <span className="text-white text-2xl font-bold tracking-tight">Apurti Foods</span>
           </div>
 
@@ -126,7 +126,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Logo mobile */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-10 h-10 rounded-xl bg-brand-700 flex items-center justify-center text-white text-xl font-black">A</div>
+            <Image src="/logo.png" alt="Apurti Logo" width={48} height={48} className="rounded-xl object-contain" unoptimized />
             <span className="text-white text-xl font-bold">Apurti Foods</span>
           </div>
 

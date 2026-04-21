@@ -18,18 +18,20 @@ export default function ProductCard({ product, customPrice, showMargin }: Produc
   const removeItem = useCartStore((s) => s.removeItem)
   const items = useCartStore((s) => s.items)
   const [adding, setAdding] = useState(false)
+  const [packing, setPacking] = useState<'500g'|'10Kg'|'30Kg'>('500g')
 
-  const cartItem = items.find((i) => i.product.id === product.id)
+  const cartItem = items.find((i) => i.product.id === product.id && i.packing === packing)
   const qty = cartItem?.quantity ?? 0
-  const price = customPrice ?? product.price_customer
-  const originalPrice = product.price_customer
+  
+  const originalPrice = packing === '500g' ? product.price_customer : (packing === '10Kg' ? (product.price_10kg || product.price_customer * 18) : (product.price_30kg || product.price_customer * 52))
+  const price = customPrice ?? originalPrice
   const savings = customPrice ? originalPrice - customPrice : 0
   const marginPct = customPrice ? Math.round(((originalPrice - customPrice) / originalPrice) * 100) : 0
   const isLowStock = product.stock <= 5
 
   const handleAdd = async () => {
     setAdding(true)
-    addItem(product, customPrice)
+    addItem(product, packing, customPrice)
     setTimeout(() => setAdding(false), 300)
   }
 
@@ -65,13 +67,27 @@ export default function ProductCard({ product, customPrice, showMargin }: Produc
         <h3 className="text-sm font-bold text-gray-900 leading-tight mb-1 line-clamp-2">{product.name}</h3>
         <p className="text-xs text-gray-500 line-clamp-2 mb-auto">{product.description}</p>
 
-        <div className="mt-3 flex items-end justify-between">
-          <div>
-            <p className="text-base font-black text-gray-900">{formatCurrency(price)}</p>
-            {savings > 0 && (
-              <p className="text-[10px] text-gray-400 line-through">{formatCurrency(originalPrice)}</p>
-            )}
+        <div className="mt-3 space-y-2">
+          {/* Packing Selector */}
+          <div className="flex bg-gray-100 rounded-lg p-0.5">
+            {(['500g', '10Kg', '30Kg'] as const).map(p => (
+              <button
+                key={p}
+                onClick={() => setPacking(p)}
+                className={`flex-1 text-[10px] font-bold py-1 rounded-md transition-all ${packing === p ? 'bg-white shadow-sm text-brand-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                {p}
+              </button>
+            ))}
           </div>
+
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-base font-black text-gray-900">{formatCurrency(price)}</p>
+              {savings > 0 && (
+                <p className="text-[10px] text-gray-400 line-through">{formatCurrency(originalPrice)}</p>
+              )}
+            </div>
 
           {/* Add to Cart */}
           {qty === 0 ? (
@@ -84,14 +100,14 @@ export default function ProductCard({ product, customPrice, showMargin }: Produc
           ) : (
             <div className="flex items-center gap-2 bg-brand-50 border border-brand-200 rounded-xl px-1 py-0.5">
               <button
-                onClick={() => removeItem(product.id)}
+                onClick={() => removeItem(product.id, packing)}
                 className="w-6 h-6 rounded-lg bg-brand-700 text-white flex items-center justify-center hover:bg-brand-800 active:scale-90 transition-all"
               >
                 <Minus className="w-3 h-3" />
               </button>
               <span className="text-sm font-black text-brand-700 w-4 text-center">{qty}</span>
               <button
-                onClick={() => addItem(product, customPrice)}
+                onClick={() => addItem(product, packing, customPrice)}
                 className="w-6 h-6 rounded-lg bg-brand-700 text-white flex items-center justify-center hover:bg-brand-800 active:scale-90 transition-all"
               >
                 <Plus className="w-3 h-3" />
