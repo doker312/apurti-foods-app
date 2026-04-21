@@ -500,7 +500,7 @@ export default function AdminDashboard({ adminProfile, orders: initialOrders, us
             <div className="space-y-5 animate-fade-in">
               <div className="flex justify-end">
                 <button
-                  onClick={() => setEditProduct({ name: '', description: '', price_customer: 0, stock: 0, category: 'Snacks', image_url: '' })}
+                  onClick={() => setEditProduct({ name: '', description: '', price_customer: 0, price_500g: 0, price_10kg: 0, price_30kg: 0, stock: 0, category: 'Snacks', image_url: '' })}
                   className="btn-primary flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" /> Add Product
@@ -520,8 +520,20 @@ export default function AdminDashboard({ adminProfile, orders: initialOrders, us
                       <textarea rows={2} value={editProduct.description || ''} onChange={(e) => setEditProduct({ ...editProduct, description: e.target.value })} className="input resize-none" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Price (₹)</label>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Base Price (₹)</label>
                       <input type="number" value={editProduct.price_customer || ''} onChange={(e) => setEditProduct({ ...editProduct, price_customer: +e.target.value })} className="input" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Price 500g (₹)</label>
+                      <input type="number" value={editProduct.price_500g || ''} onChange={(e) => setEditProduct({ ...editProduct, price_500g: +e.target.value })} className="input" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Price 10Kg (₹)</label>
+                      <input type="number" value={editProduct.price_10kg || ''} onChange={(e) => setEditProduct({ ...editProduct, price_10kg: +e.target.value })} className="input" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Price 30Kg (₹)</label>
+                      <input type="number" value={editProduct.price_30kg || ''} onChange={(e) => setEditProduct({ ...editProduct, price_30kg: +e.target.value })} className="input" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Stock</label>
